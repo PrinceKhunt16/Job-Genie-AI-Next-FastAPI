@@ -76,7 +76,7 @@ const Sidebar = ({ ml, setMl }) => {
                 </li>
                 <li className={`h-[52px] flex items-center mb-2 px-4 ${isActive('/manage-urls')}`}>
                     <Link
-                        href="/manage-urls"
+                        href="/manage-companies"
                         className={`flex items-center gap-3 w-full text-lg cursor-pointer py-3 font-normal relative`}
                     >
                         <SiNginxproxymanager size={22} color={`${isActive('/manage-urls') && "black"}`} />
@@ -84,7 +84,7 @@ const Sidebar = ({ ml, setMl }) => {
                             className={`transition-text duration-300 transform absolute ${!isText ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-[-5px]'} ease-in-out`}
                             style={{ visibility: !isText ? 'visible' : 'hidden', left: '35px' }}
                         >
-                            Manage URLs
+                            Manage Companies
                         </span>
                     </Link>
                 </li>

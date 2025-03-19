@@ -1,19 +1,23 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
-from typing import Optional, Dict, List
+from typing import Optional, List
 from datetime import datetime, timedelta
-from jose import JWTError, jwt
+from jose import jwt
 from passlib.context import CryptContext
-import uuid
-import json
-import os
-from pathlib import Path
-
+from pymongo import MongoClient
+from fastapi.concurrency import run_in_threadpool
+from bson import ObjectId
+ 
 SECRET_KEY = "c70b46e7d4cb1c3ddfbfc56898b8327d90f1d0c4aaeb97bb038ef3db2a46d19c" 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 3600
+MONGO_DB_URL = "mongodb://localhost:27017"
+MONGO_DB_NAME = "JobGenie" 
+
+client = MongoClient(MONGO_DB_URL)
+db = client[MONGO_DB_NAME]
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -29,13 +33,13 @@ app.add_middleware(
     allow_headers=["*"], 
 )
 
-DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
-USER_FILE = DATA_DIR / "users.json"
+#
+#
+#
+#
+#
 
-if not USER_FILE.exists():
-    with open(USER_FILE, "w") as f:
-        json.dump({}, f)
+users = db["users"]
 
 class UserCreate(BaseModel):
     username: str
@@ -66,34 +70,21 @@ class UserResponse(BaseModel):
     username: str
     email: str
 
-def read_users():
-    with open(USER_FILE, "r") as f:
-        return json.load(f)
-
-def write_users(users_data: Dict[str, Dict]):
-    with open(USER_FILE, "w") as f:
-        json.dump(users_data, f, indent=4)
-
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-def get_user(email: str):
-    users_db = read_users()
-    for user_id, user_data in users_db.items():
-        if user_data["email"] == email:
-            user_dict = users_db[user_id]
-            return UserInDB(**user_dict)
-    return None
-
-def authenticate_user(email: str, password: str):
-    user = get_user(email)
+async def authenticate_user(email: str, password: str):
+    user = await run_in_threadpool(users.find_one, {"email": email})
+    
     if not user:
-        return False
-    if not verify_password(password, user.hashed_password):
-        return False
+        return None
+    
+    if not verify_password(password, user["hashed_password"]):
+        return None
+    
     return user
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -106,81 +97,186 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        token_data = TokenData(username=username)
-    except JWTError:
-        raise credentials_exception
-    user = get_user(username=token_data.username)
-    if user is None:
-        raise credentials_exception
-    return user
-
 @app.post("/auth/signup", response_model=Token)
 async def register(user: UserCreate):
-    print(user)
-    users_db = read_users()
+    existing_user = await run_in_threadpool(users.find_one, {"email": user.email})
     
-    for user_id, user_data in users_db.items():
-        if user_data["email"] == user.email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
     
-    user_id = str(uuid.uuid4())
     hashed_password = get_password_hash(user.password)
     user_data = {
-        "id": user_id,
         "username": user.username,
         "email": user.email,
-        "hashed_password": hashed_password
+        "hashed_password": hashed_password,
+        "companies": []
     }
     
-    users_db[user_id] = user_data
-    write_users(users_db)
+    response = await run_in_threadpool(users.insert_one, user_data)
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
 
-    return {"access_token": access_token, "user_id": user_id}
+    return {"access_token": access_token, "user_id": str(response.inserted_id)}
 
 @app.post("/auth/signin", response_model=Token)
 async def login_for_access_token(form_data: EmailPasswordRequestForm):
-    print(form_data)
-    user = authenticate_user(form_data.email, form_data.password)
+    user = await authenticate_user(form_data.email, form_data.password)
+    
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": user["email"]}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "user_id": user.id}
 
-@app.get("/me", response_model=UserResponse)
-async def get_current_user(user_id: str = Query(..., description="The ID of the user to retrieve")):
-    users_db = read_users()
-    
-    if user_id not in users_db:
+    return {"access_token": access_token, "user_id": str(user["_id"])}
+
+#
+#
+#
+#
+#
+
+companies = db["companies"]
+
+class CompanyCreate(BaseModel):
+    name: str
+    url: str
+
+class CompanyResponse(BaseModel):
+    success: bool
+
+class CompaniesResponse(BaseModel):
+    id: str
+    name: str
+    url: str
+
+class SaveCompanies(BaseModel):
+    user_id: str
+    companies: List[str]
+
+class SaveCompanyResponse(BaseModel):
+    success: bool
+
+class UserCompanies(BaseModel):
+    user_id: str
+
+class UserCompaniesReturn(BaseModel):
+    id: str
+    name: str
+    url: str
+
+@app.post("/companies/add", response_model=CompanyResponse)
+async def add_company(company: CompanyCreate):
+    try:
+        company_data = {
+            "name": company.name,
+            "url": company.url
+        }
+
+        await run_in_threadpool(companies.insert_one, company_data)
+        
+        return {
+            "success": True
+        }
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while adding the company",
         )
     
-    user_data = users_db[user_id]
-    return UserResponse(**user_data)
+@app.get("/companies", response_model=List[CompaniesResponse])
+async def get_all_companies():
+    try:
+        companies_list = await run_in_threadpool(companies.find)
+        
+        return [
+            {
+                "id": str(company["_id"]),
+                "name": company["name"],
+                "url": company["url"],
+            }
+            for company in companies_list
+        ]
+    except Exception as e:
+        print(f"Error fetching companies: {e}")
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while fetching companies",
+        )
+    
+@app.post("/companies/save", response_model=SaveCompanyResponse)
+async def save_companies(saveCompanies: SaveCompanies):
+    try:
+        user_id = ObjectId(saveCompanies.user_id)
+        user = await run_in_threadpool(users.find_one, {"_id": user_id})
+ 
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        
+        await run_in_threadpool(
+            users.update_one,
+            {"_id": user_id},
+            {"$set": {"companies": saveCompanies.companies}},
+        )
+
+        return {
+            "success": True
+        }
+    except Exception as e:
+        print(f"Error saving companies: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while saving companies",
+        )
+
+@app.post("/user/companies", response_model=List[UserCompaniesReturn])
+async def get_all_companies(user: UserCompanies):
+    try:
+        user_id = ObjectId(user.user_id)
+        user_data = await run_in_threadpool(users.find_one, {"_id": user_id})
+
+        if not user_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        
+        company_ids = user_data.get("companies", [])
+        
+        if company_ids:
+            company_objects = await run_in_threadpool(
+                companies.find,   
+                {"_id": {"$in": [ObjectId(cid) for cid in company_ids]}}
+            )
+
+            return [
+                {
+                    "id": str(company["_id"]),
+                    "name": company["name"],
+                    "url": company["url"],
+                }
+                for company in company_objects
+            ]
+    except Exception as e:
+        print(f"Error fetching companies: {e}")
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while fetching companies",
+        )

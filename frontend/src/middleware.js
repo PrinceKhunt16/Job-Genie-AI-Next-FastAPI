@@ -4,8 +4,8 @@ export function middleware(request) {
     const token = request.cookies.get("x-api-k-token")?.value;
     const { pathname } = request.nextUrl;
 
-    const protectedRoutes = ["/"];
-
+    const protectedRoutes = ["/", "/manage-companies", "/autofill", "/profile"]
+    
     const isProtected = protectedRoutes.some((route) => request.nextUrl.pathname.startsWith(route));
 
     if (token && pathname.startsWith("/auth")) {
@@ -20,5 +20,5 @@ export function middleware(request) {
 }
 
 export const config = {
-    matcher: ["/"]
+    matcher: ["/", "/manage-companies", "/autofill", "/profile"]
 };
