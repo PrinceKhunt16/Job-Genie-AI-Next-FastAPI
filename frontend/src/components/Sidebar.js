@@ -88,7 +88,7 @@ const Sidebar = ({ ml, setMl }) => {
                         </span>
                     </Link>
                 </li>
-                <li className={`h-[52px] flex items-center mb-2 px-4 ${isActive('/autofill')}`}>
+                {/* <li className={`h-[52px] flex items-center mb-2 px-4 ${isActive('/autofill')}`}>
                     <Link
                         href="/autofill"
                         className={`flex items-center gap-3 w-full text-lg cursor-pointer py-3 font-normal relative`}
@@ -115,7 +115,7 @@ const Sidebar = ({ ml, setMl }) => {
                             Profile
                         </span>
                     </Link>
-                </li>
+                </li> */}
             </ul>
             <div className="mt-auto p-4">
                 <Link

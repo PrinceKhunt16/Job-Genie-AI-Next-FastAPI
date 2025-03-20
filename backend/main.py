@@ -9,10 +9,14 @@ from passlib.context import CryptContext
 from pymongo import MongoClient
 from fastapi.concurrency import run_in_threadpool
 from bson import ObjectId
+from agents.job_scraper import JobScraperAgent
+from agents.job_parser import JobParserAgent
+from dotenv import load_dotenv
  
+load_dotenv()
 SECRET_KEY = "c70b46e7d4cb1c3ddfbfc56898b8327d90f1d0c4aaeb97bb038ef3db2a46d19c" 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 3600
+ACCESS_TOKEN_EXPIRE_MINUTES = 300
 MONGO_DB_URL = "mongodb://localhost:27017"
 MONGO_DB_NAME = "JobGenie" 
 
@@ -279,4 +283,36 @@ async def get_all_companies(user: UserCompanies):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while fetching companies",
+        )
+    
+#
+#
+#
+#
+#
+
+class JobRequest(BaseModel):
+    url: str
+    job_titles: List[str]
+
+class CompanyResponse(BaseModel):
+    jobs: List[dict]
+
+@app.post("/jobs", response_model=CompanyResponse)
+async def add_jobs(job_request: JobRequest):
+    try:
+        scraper = JobScraperAgent()
+        raw_data = scraper.execute(job_request.url)
+
+        parser = JobParserAgent()
+        structured_jobs = parser.execute([raw_data])
+
+        return {
+            "jobs": structured_jobs
+        }
+    except Exception as e:
+        print(f"Error inserting job: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while inserting job listing"
         )

@@ -133,7 +133,7 @@ const ManageCompaniesPage = () => {
                     <div className="max-w-6xl mx-auto bg-cream-100 overflow-hidden">
                         <div className="grid grid-cols-3 gap-4">
                             <div className="col-span-2">
-                                <div className="w-full pt-6 pr-6 border-r min-h-screen border-gray-300">
+                                <div className="w-full pt-6 pr-4 pl-4 border-r min-h-screen border-gray-300">
                                     <div className="flex justify-between items-center mb-4">
                                         <h2 className="text-3xl font-bold">Manage Companies</h2>
                                         <button className="bg-gradient-to-b from-fuchsia-700 to-blue-600/90 p-2 rounded-full text-lg font-bold cursor-pointer" onClick={openPopup}>
@@ -144,7 +144,7 @@ const ManageCompaniesPage = () => {
                                         {availableURLs.map((company) => (
                                             <button
                                                 key={company.id}
-                                                className="cursor-pointer border border-black py-2 px-4 font-bold"
+                                                className="cursor-pointer border border-black py-2 px-4 font-bold bg-gray-200 hover:bg-gray-300"
                                                 onClick={() => handleSelectURL(company.id)}
                                             >
                                                 {company.name}
@@ -154,13 +154,13 @@ const ManageCompaniesPage = () => {
                                 </div>
                             </div>
                             <div className="col-span-1">
-                                <div className="w-full py-6">
+                                <div className="w-full py-6 pr-4">
                                     <h2 className="text-3xl font-bold mb-4">Selected Companies</h2>
                                     <div className="flex flex-wrap gap-2 mb-4 max-h-[calc(100vh-170px)] overflow-y-scroll">
                                         {selectedURLs.map((company) => (
                                             <button
                                                 key={company.id}
-                                                className="cursor-pointer border border-black py-2 px-4 font-bold"
+                                                className="cursor-pointer border border-black py-2 px-4 font-bold bg-gray-200 hover:bg-gray-300"
                                                 onClick={() => handleRemoveURL(company.id)}
                                             >
                                                 {company.name}

@@ -185,7 +185,7 @@ export default function AuthPage() {
                                     </div>
                                     <button
                                         type="submit"
-                                        className="text-lg w-full p-2 text-white bg-black rounded-xl hover:bg-gray-800"
+                                        className="cursor-pointer text-lg w-full p-2 text-white bg-black rounded-xl hover:bg-gray-800"
                                         onClick={(e) => onSubmitSignIn(e)}
                                     >
                                         Sign In
@@ -243,7 +243,7 @@ export default function AuthPage() {
                                     </div>
                                     <button
                                         type="submit"
-                                        className="text-lg w-full p-2 text-white bg-black rounded-xl hover:bg-gray-800"
+                                        className="cursor-pointer text-lg w-full p-2 text-white bg-black rounded-xl hover:bg-gray-800"
                                         onClick={(e) => onSubmitSignUp(e)}
                                     >
                                         Sign Up
