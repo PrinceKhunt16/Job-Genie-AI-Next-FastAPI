@@ -17,6 +17,7 @@ const ManageCompaniesPage = () => {
   const [currentCompany, setCurrentCompany] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [filteredJobs, setFilteredJobs] = useState([]);
+  const [isFiltered, setIsFiltered] = useState(false);
 
   const openPopup = () => setIsPopupOpen(true);
   const closePopup = () => setIsPopupOpen(false);
@@ -62,6 +63,16 @@ const ManageCompaniesPage = () => {
       });
 
       setJobs(response.data.jobs);
+
+      const normalizedJobTitles = jobTitles.map((title) =>
+        title.trim().toLowerCase()
+      );
+
+      const filteredJobs = jobs.filter((job) =>
+        normalizedJobTitles.includes(job.title.trim().toLowerCase())
+      );
+
+      setFilteredJobs(filteredJobs);
     } catch (e) {
       console.error("Error getting jobs:", e.response?.data || e.message);
     } finally {
@@ -128,7 +139,7 @@ const ManageCompaniesPage = () => {
               <div className="col-span-2">
                 <div className="w-full pt-6 pr-4">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-3xl font-bold">Current Openings</h2>
+                    <h2 className="text-3xl font-bold">Current Openings {currentCompany && `- ${currentCompany.name}`}</h2>
                     <button className="bg-gradient-to-b from-fuchsia-700 to-blue-600/90 p-2 rounded-full text-lg font-bold cursor-pointer" onClick={openPopup}>
                       <IoMdSettings fontSize={24} color='white' />
                     </button>
@@ -139,56 +150,74 @@ const ManageCompaniesPage = () => {
                         <p className="text-2xl font-bold">Searching in {currentCompany.name}'s page...</p>
                       </div>
                     ) : (
-                      <div className="flex flex-wrap pb-4">
-                        {filteredJobs.length > 0 ? (
-                          <>
-                            {filteredJobs.map((job, index) => (
-                              <div
-                                key={index}
-                                className="w-full sm:w-[calc(50%-1rem)] p-6 bg-gray-100 hover:bg-gray-200 border-r border-r-gray-300 border-b border-b-gray-300"
-                              >
-                                <h2 className="text-xl font-bold text-gray-800">{job.title}</h2>
-                                <p className="mt-2 text-gray-600">
-                                  <span className="font-semibold">Location:</span> {job.location}
-                                </p>
-                                <p className="mt-2 text-gray-600">
-                                  <span className="font-semibold">Description:</span>{" "}
-                                  {job.description}
-                                </p>
-                                <button
-                                  onClick={() => handleRedirectToJobPage()}
-                                  className="cursor-pointer w-full mt-4 px-4 py-2 bg-gradient-to-r from-fuchsia-700 to-blue-600/90 text-white rounded-full transition-colors"
-                                >
-                                  Click Me
-                                </button>
-                              </div>
-                            ))}
-                          </>
-                        ) : (
-                          <>
-                            {jobs.map((job, index) => (
-                              <div
-                                key={index}
-                                className="w-full sm:w-[calc(50%-1rem)] p-6 bg-gray-100 hover:bg-gray-200 border-r border-r-gray-300 border-b border-b-gray-300"
-                              >
-                                <h2 className="text-xl font-bold text-gray-800">{job.title}</h2>
-                                <p className="mt-2 text-gray-600">
-                                  <span className="font-semibold">Location:</span> {job.location}
-                                </p>
-                                <p className="mt-2 text-gray-600">
-                                  <span className="font-semibold">Description:</span>{" "}
-                                  {job.description}
-                                </p>
-                                <button
-                                  onClick={() => handleRedirectToJobPage()}
-                                  className="cursor-pointer w-full mt-4 px-4 py-2 bg-gradient-to-r from-fuchsia-700 to-blue-600/90 text-white rounded-full transition-colors"
-                                >
-                                  Click Me
-                                </button>
-                              </div>
-                            ))}
-                          </>
+                      <div>
+                        {currentCompany && (
+                          <div className='flex gap-2 pb-4'>
+                            <button
+                              className={`border border-black py-2 px-4 font-bold cursor-pointer ${!isFiltered ? 'bg-gray-300' : 'bg-gray-200 hover:bg-gray-300'}`}
+                              onClick={() => setIsFiltered(false)}
+                            >
+                              Unfiltered Results
+                            </button>
+                            <button
+                              className={`border border-black py-2 px-4 font-bold cursor-pointer ${isFiltered ? 'bg-gray-300' : 'bg-gray-200 hover:bg-gray-300'}`}
+                              onClick={() => setIsFiltered(true)}
+                            >
+                              Filtered Results
+                            </button>
+                          </div>
                         )}
+                        <div className="flex flex-wrap pb-4">
+                          {isFiltered ? (
+                            <>
+                              {filteredJobs.map((job, index) => (
+                                <div
+                                  key={index}
+                                  className="w-full sm:w-[calc(50%-1rem)] p-6 bg-gray-100 hover:bg-gray-200 border-r border-r-gray-300 border-b border-b-gray-300"
+                                >
+                                  <h2 className="text-xl font-bold text-gray-800">{job.title}</h2>
+                                  <p className="mt-2 text-gray-600">
+                                    <span className="font-semibold">Location:</span> {job.location}
+                                  </p>
+                                  <p className="mt-2 text-gray-600">
+                                    <span className="font-semibold">Description:</span>{" "}
+                                    {job.description}
+                                  </p>
+                                  <button
+                                    onClick={() => handleRedirectToJobPage()}
+                                    className="cursor-pointer w-full mt-4 px-4 py-2 bg-gradient-to-r from-fuchsia-700 to-blue-600/90 text-white rounded-full transition-colors"
+                                  >
+                                    Click Me
+                                  </button>
+                                </div>
+                              ))}
+                            </>
+                          ) : (
+                            <>
+                              {jobs.map((job, index) => (
+                                <div
+                                  key={index}
+                                  className="w-full sm:w-[calc(50%-1rem)] p-6 bg-gray-100 hover:bg-gray-200 border-r border-r-gray-300 border-b border-b-gray-300"
+                                >
+                                  <h2 className="text-xl font-bold text-gray-800">{job.title}</h2>
+                                  <p className="mt-2 text-gray-600">
+                                    <span className="font-semibold">Location:</span> {job.location}
+                                  </p>
+                                  <p className="mt-2 text-gray-600">
+                                    <span className="font-semibold">Description:</span>{" "}
+                                    {job.description}
+                                  </p>
+                                  <button
+                                    onClick={() => handleRedirectToJobPage()}
+                                    className="cursor-pointer w-full mt-4 px-4 py-2 bg-gradient-to-r from-fuchsia-700 to-blue-600/90 text-white rounded-full transition-colors"
+                                  >
+                                    Click Me
+                                  </button>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

@@ -301,11 +301,11 @@ class CompanyResponse(BaseModel):
 @app.post("/jobs", response_model=CompanyResponse)
 async def add_jobs(job_request: JobRequest):
     try:
-        scraper = JobScraperAgent()
-        raw_data = scraper.execute(job_request.url)
+        # scraper = JobScraperAgent()
+        # raw_data = scraper.execute(job_request.url)
 
-        parser = JobParserAgent()
-        structured_jobs = parser.execute([raw_data])
+        # parser = JobParserAgent()
+        # structured_jobs = parser.execute([raw_data])
 
         return {
             "jobs": structured_jobs
